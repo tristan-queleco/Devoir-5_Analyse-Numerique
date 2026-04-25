@@ -16,33 +16,32 @@ def splines_edo_implicite(alpha, beta, f, t0, tf, N):
     # Iteration 0
     ti = t0
 
-    p_i = lambda C: C[0]*(ti+h)**3 + C[1]*(ti+h)**2 + C[2]*(ti+h) + C[3]
-    dp_i = lambda C: 3*C[0]*(ti+h)**2 + 2*C[1]*(ti+h) + C[2]
+    def make_F(ti, h, yi, dyi):
+        ti_next = ti + h
+        def F(x):
+            q_next  =   x[0]*ti_next**3 +   x[1]*ti_next**2 + x[2]*ti_next + x[3]
+            dq_next = 3*x[0]*ti_next**2 + 2*x[1]*ti_next    + x[2]
+            return [
+                x[0]*ti**3    + x[1]*ti**2 + x[2]*ti + x[3] - yi,
+                3*x[0]*ti**2  + 2*x[1]*ti  + x[2]           - dyi,
+                6*x[0]*ti     + 2*x[1]                      - f(ti, yi, dyi),
+                6*x[0]*ti_next + 2*x[1]                     - f(ti_next, q_next, dq_next)
+            ]
+        return F
 
-    F = lambda x: [
-        ti**3*x[0]    + ti**2*x[1] + ti*x[2] + x[3] - alpha,
-        3*ti**2*x[0]  + 2*ti*x[1]  + x[2]           - beta,
-        6*ti*x[0]     + 2*x[1]                      - f(ti, alpha, beta),
-        6*(ti+h)*x[0] + 2*x[1]                      - f(ti+h, p_i(x), dp_i(x))
-    ]
-
-    # fsolve est une variante de la méthode de Newton
-    sol= fsolve(F, [1, 1, beta, alpha])
+    # Iteration 0 : yi=alpha, dyi=beta
+    F0 = make_F(ti, h, alpha, beta)
+    sol = fsolve(F0, [1, 1, beta, alpha])
     coeffs.append(sol)
 
     for i in range(N):
-        C = coeffs[i]
+        C  = coeffs[i]
         ti = ti + h
         yi  =   C[0]*ti**3 +   C[1]*ti**2 + C[2]*ti + C[3]
         dyi = 3*C[0]*ti**2 + 2*C[1]*ti    + C[2]
 
-        p_i = lambda C: C[0]*(ti+h)**3 + C[1]*(ti+h)**2 + C[2]*(ti+h) + C[3]
-        dp_i = lambda C: 3*C[0]*(ti+h)**2 + 2*C[1]*(ti+h) + C[2]
-
-        # A COMPLETER
-        # F = lambda x: ...
-
-        sol = fsolve(F, C)
+        Fi  = make_F(ti, h, yi, dyi)
+        sol = fsolve(Fi, C)
         coeffs.append(sol)
 
     return coeffs
